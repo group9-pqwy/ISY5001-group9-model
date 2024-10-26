@@ -6,9 +6,14 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from keras.api.models import load_model
 from keras.api.losses import MeanSquaredError  # 使用 Keras 的 MSE 损失函数
+import os
+import google.generativeai as genai
+from flask_cors import CORS  # 导入 CORS 
+
 
 # 创建Flask应用
 app = Flask(__name__)
+CORS(app)  # 为整个应用启用 CORS
 
 # --- 加载保存的模型 ---
 word2vec_model = joblib.load('word2vec_model.pkl')  # 加载Word2Vec模型
@@ -133,6 +138,25 @@ def predict_rating(model, user_id, car_id, user2user_encoded, car2car_encoded, m
     else:
         return mean_rating  # 使用平均评分作为默认值
 
+# 配置 Google Generative AI
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+
+# 定义模型和生成配置
+generation_config = {
+    "temperature": 1,
+    "top_p": 0.95,
+    "top_k": 64,
+    "max_output_tokens": 8192,
+    "response_mime_type": "text/plain",
+}
+
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    generation_config=generation_config,
+    system_instruction="You are a chatbot in excellent automobile related knowledge and you will answer all kinds of automobile related questions of the users in an approachable and friendly tone. You can't have any markdown syntax in your reply. Try to respond to the user's answer in a single response without requiring the user to add additional information.",
+)
+
+
 # Flask路由用于处理推荐请求
 @app.route('/recommend', methods=['POST'])
 def recommend():
@@ -221,6 +245,33 @@ def recommend():
 
     except Exception as e:
         print(f"Error in /recommend route: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/geminichat', methods=['POST'])
+def send_message():
+    try:
+        # 从请求中获取用户输入
+        data = request.json
+        user_message = data.get('message', {}).get('content')  # 安全地获取 message content
+
+        if not user_message:
+            return jsonify({"error": "Invalid data format"}), 400
+
+        # 创建聊天会话
+        chat_session = model.start_chat(history=[])
+
+        # 发送用户消息并获取AI生成的响应
+        response = chat_session.send_message(user_message)
+        print(f"Raw response: {response}")
+
+        # 获取生成的响应文本
+        response_text = response.candidates[0].content.parts[0].text
+
+        # 返回生成的响应文本
+        return jsonify({"response": response_text}), 200
+
+    except Exception as e:
+        print(f"Error in /geminichat route: {e}")
         return jsonify({"error": str(e)}), 500
 
 # 启动Flask服务
