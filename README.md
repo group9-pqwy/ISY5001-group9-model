@@ -68,7 +68,7 @@ your reposotory/
 ├── .venv/                             # Virtual environment directory
 ├── app.py                             # Main Flask application file
 ├── clean_data.csv                     # Preprocessed data file
-├── group9-project1-flask-version.ipynb # Jupyter notebook for analysis or model training
+├── model.ipynb                        # Jupyter notebook for analysis or model training
 ├── kmeans_model.pkl                   # Pickle file for KMeans model
 ├── matrix_factorization_model.h5      # HDF5 file for matrix factorization model
 ├── matrix_factorization_model.pkl     # Pickle file for matrix factorization model
